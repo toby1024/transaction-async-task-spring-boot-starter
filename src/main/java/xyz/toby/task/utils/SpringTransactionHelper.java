@@ -12,7 +12,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class SpringTransactionHelper {
     /**
      * 是否开启spring事务
-     * @return
+     * @return spring事务开启标志
      */
     public static boolean isSpringTransactionActive() {
         // #ARCH-308

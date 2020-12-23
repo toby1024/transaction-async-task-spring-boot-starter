@@ -5,6 +5,9 @@ package xyz.toby.task.exception;
  * @Date: 2020/12/16
  */
 public class TransactionAsyncTaskException extends RuntimeException {
+    public TransactionAsyncTaskException() {
+    }
+
     public TransactionAsyncTaskException(String message) {
         super(message);
     }

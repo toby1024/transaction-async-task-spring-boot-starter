@@ -21,19 +21,20 @@ import xyz.toby.task.annotation.TransactionAsyncTask;
 import xyz.toby.task.config.RedisProperties;
 import xyz.toby.task.exception.TransactionAsyncTaskException;
 import xyz.toby.task.exception.WrongBeanException;
+import xyz.toby.task.handler.BaseAsyncTaskHandler;
 import xyz.toby.task.handler.BaseTaskHandler;
+import xyz.toby.task.model.TaskInfo;
+import xyz.toby.task.redis.RedisUtil;
 import xyz.toby.task.spring.AfterTxService;
 import xyz.toby.task.utils.JacksonUtil;
 import xyz.toby.task.utils.ScheduledUtil;
 import xyz.toby.task.utils.SpringTransactionHelper;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Logger;
 
-import static xyz.toby.task.config.Constant.METHOD_NAME_DELAYED;
-import static xyz.toby.task.config.Constant.METHOD_NAME_GET_BIZ_ID;
+import static xyz.toby.task.config.Constant.*;
 
 
 @Configuration
@@ -42,10 +43,11 @@ public class TransactionAsyncTaskConfigure implements ApplicationContextAware {
 
     private Logger logger = Logger.getLogger(TransactionAsyncTaskConfigure.class.getName());
 
+    private RedisProperties redisProperties;
     private Map<String, BaseTaskHandler> taskRegister;
-
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        TaskSubmitter taskSubmitter = new TaskSubmitter(new RedisUtil(redisProperties));
         Map<String, Object> beans = applicationContext.getBeansWithAnnotation(TransactionAsyncTask.class);
         Set<Map.Entry<String, Object>> entries = beans.entrySet();
         for (Map.Entry<String, Object> entry : entries) {
@@ -57,6 +59,13 @@ public class TransactionAsyncTaskConfigure implements ApplicationContextAware {
             TransactionAsyncTask annotation = clazz.getAnnotation(TransactionAsyncTask.class);
             validateTaskAnnotation(annotation, clazz.getName());
 
+            if (handler instanceof BaseAsyncTaskHandler) {
+                proxyHandler(handler, METHOD_NAME_ASYNC, (args, taskId, params, wrappedScheduledTime) -> {
+                    TaskInfo taskInfo = new TaskInfo(taskId, annotation.timeout(), annotation.maxRetry(), params);
+                    //noinspection unchecked
+                    taskSubmitter.submitAsync(taskInfo, (Class<BaseAsyncTaskHandler>) clazz);
+                });
+            }
         }
     }
 
